@@ -18,21 +18,36 @@ PROGRESS_UPDATE_STEP = 10000
 class MARC2csvDataModel(object):
     def __init__(self,
                  mms_id, publication_date, isbn, language_of_original, language_of_intermediate_translation,
-                 title, title_of_original):
+                 creator, title, title_of_original, edition, publication_place, extent, form_of_work,
+                 audience_characteristics, contributor_characteristics, genre, cocreator,
+                 publisher_uniform_name, series_personal, series_title, is_selected_value):
         self.data = {'mms_id': mms_id,
                      'publication_date': publication_date,
                      'isbn': isbn,
                      'language_of_original': language_of_original,
                      'language_of_intermediate_translation': language_of_intermediate_translation,
+                     'creator': creator,
                      'title': title,
-                     'title_of_original': title_of_original}
+                     'title_of_original': title_of_original,
+                     'edition': edition,
+                     'publication_place': publication_place,
+                     'extent': extent,
+                     'form_of_work': form_of_work,
+                     'audience_characteristics': audience_characteristics,
+                     'contributor_characteristics': contributor_characteristics,
+                     'genre': genre,
+                     'cocreator': cocreator,
+                     'publisher_uniform_name': publisher_uniform_name,
+                     'series_personal': series_personal,
+                     'series_title': series_title,
+                     'is_selected_value': is_selected_value}
 
     def as_sanitized_for_csv_dict(self) -> dict[str: str]:
         sanitized_for_csv_dict = {}
         for key, value in self.data.items():
             if value and type(value) is list:
                 sanitized_for_csv_dict[key] = '|'.join(value)
-            if value and type(value) is str or type(value) is int:
+            if value and (type(value) is str or type(value) is int):
                 sanitized_for_csv_dict[key] = value
             if not value:
                 sanitized_for_csv_dict[key] = ''
@@ -40,44 +55,83 @@ class MARC2csvDataModel(object):
         return sanitized_for_csv_dict
 
 
-def is_selected(pymarc_rcd) -> bool:
+def is_selected(pymarc_rcd) -> int:
     publication_date = attr_extr.get_publication_dates(pymarc_rcd)
     language_of_original = attr_extr.get_language_of_original(pymarc_rcd)
-    language = attr_extr.get_values_by_field(pymarc_rcd, '008')[0][35:38]
+    language_of_publication = attr_extr.get_language_of_publication(pymarc_rcd)
     field_041h = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('041', ['h']))
     form_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('380', ['a']))
-    genre_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['a']))
-    genre_general_subdivision = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['x']))
+    is_translation = attr_extr.is_translation(pymarc_rcd)
+    #genre_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['a']))
+    #genre_general_subdivision = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['x']))
 
     try:
         if publication_date >= 1918 \
-          and language_of_original != 'pol' and field_041h \
-          and language == 'pol' \
-          and ('Książki' in form_of_work or "E-booki" in form_of_work)  \
-          and 'Anegdoty' in ' '.join(genre_of_work) and 'historia' not in genre_general_subdivision:
-            return True
+                and language_of_original != 'pol' and field_041h \
+                and 'pol' in language_of_publication \
+                and ('Książki' in form_of_work or "E-booki" in form_of_work):
+            return 1
+        if publication_date >= 1918 \
+                and language_of_original != 'pol' and (is_translation or field_041h) \
+                and 'pol' in language_of_publication \
+                and (('Książki' in form_of_work or "E-booki" in form_of_work) or not form_of_work):
+            return 2
         else:
-            return False
+            return 0
     except Exception:
-        return False
+        return 0
 
 
-def extract_to_csv(pymarc_rcd):
+def extract_to_csv(pymarc_rcd, is_selected_value):
     mms_id = attr_extr.get_values_by_field(pymarc_rcd, '009')[0]
     publication_date = attr_extr.get_publication_dates(pymarc_rcd)
     isbn = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('020', ['a']))
     language_of_original = attr_extr.get_language_of_original(pymarc_rcd)
-    language_of_intermediate_translation = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('245', ['k']))
-    title = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('245', ['a', 'b', 'n', 'p']))[0].rstrip('/').strip()
+    language_of_intermediate_translation = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('041', ['k']))
+    creator = attr_extr.get_creator(pymarc_rcd)
+    title = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                       ('245', ['a', 'b', 'n', 'p']))[0].rstrip('/;:=,.').strip()
     title_of_original = attr_extr.get_title_of_original(pymarc_rcd)
+    edition = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                         ('250', ['a']))[0].rstrip('/').strip() if attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('250', ['a'])) else ''
+    publication_place = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                                   ('260', ['a']))[0].rstrip(':').strip() if attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('260', ['a'])) else ''
+    extent = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                        ('300', ['a']))[0].rstrip(':;').strip() if attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('300', ['a'])) else ''
+    form_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                              ('380', ['a']))
+    audience_characteristics = attr_extr.get_audience_characteristics(pymarc_rcd)
+    contributor_characteristics = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                                             ('386', ['a']))
+    genre = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                       ('655', ['a']))
+    cocreator = attr_extr.get_cocreator(pymarc_rcd)
+    publisher_uniform_name = attr_extr.get_publisher_uniform_name(pymarc_rcd)
+    series_personal = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                                 ('800', ['a', 't', 'v']))
+    series_title = attr_extr.get_values_by_field_and_subfield(pymarc_rcd,
+                                                              ('830', ['a', 'x', 'v']))
 
     return MARC2csvDataModel(mms_id=mms_id,
                              publication_date=publication_date,
                              isbn=isbn,
                              language_of_original=language_of_original,
                              language_of_intermediate_translation=language_of_intermediate_translation,
+                             creator=creator,
                              title=title,
-                             title_of_original=title_of_original)
+                             title_of_original=title_of_original,
+                             edition=edition,
+                             publication_place=publication_place,
+                             extent=extent,
+                             form_of_work=form_of_work,
+                             audience_characteristics=audience_characteristics,
+                             contributor_characteristics=contributor_characteristics,
+                             genre=genre,
+                             cocreator=cocreator,
+                             publisher_uniform_name=publisher_uniform_name,
+                             series_personal=series_personal,
+                             series_title=series_title,
+                             is_selected_value=is_selected_value)
 
 
 def select_and_extract_records_to_csv(path_to_raw_db):
@@ -87,13 +141,16 @@ def select_and_extract_records_to_csv(path_to_raw_db):
         counter = 0
         for rcd in rdr:
             if counter % PROGRESS_UPDATE_STEP == 0:
-                marc_reader_logger.info(f'Processed {counter} records')
+                marc_reader_logger.info(f'Processed {counter} records.')
             counter += 1
 
-            if is_selected(rcd):
-                exctracted_to_csv = extract_to_csv(rcd)
-                print(exctracted_to_csv)
-                yield exctracted_to_csv
+            is_selected_value = is_selected(rcd)
+            if is_selected_value == 1 or is_selected_value == 2:
+                try:
+                    exctracted_to_csv = extract_to_csv(rcd, is_selected_value)
+                    yield exctracted_to_csv
+                except Exception:
+                    yield ''
 
 
 def dump_to_csv(records_buffer):
@@ -109,10 +166,11 @@ def main(db_config):
 
     records_buffer = []
     for record in select_and_extract_records_to_csv(path_to_raw_db):
-        records_buffer.append(record)
-        if len(records_buffer) == 5:
-            dump_to_csv(records_buffer)
-            records_buffer = []
+        if record:
+            records_buffer.append(record)
+            if len(records_buffer) == 500:
+                dump_to_csv(records_buffer)
+                records_buffer = []
     if records_buffer:
         dump_to_csv(records_buffer)
 
