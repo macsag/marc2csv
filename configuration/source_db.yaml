@@ -1,2 +1,2 @@
-source_db_name: rec (1).mrc
-skip_download: true
+source_db_name: bibs-all.marc
+skip_download: false
