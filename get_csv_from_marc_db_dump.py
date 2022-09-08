@@ -21,8 +21,8 @@ class MARC2csvDataModel(object):
                  language_of_intermediate_translation, udc, other_classification_number,
                  creator, title, title_of_original, edition, publication_place, extent, form_of_work,
                  audience_characteristics, contributor_characteristics, genre, cocreator, cocreator_only_translator,
-                 cocreator_without_translator,
-                 publisher_uniform_name, series_personal, series_title, is_selected_value):
+                 cocreator_without_translator, publisher_uniform_name, series_personal,
+                 series_title, is_selected_value):
         self.data = {'mms_id': mms_id,
                      'publication_date': publication_date,
                      'publication_country': publication_country,
