@@ -2,7 +2,7 @@ import logging
 import sys
 import csv
 
-from pymarc import MARCReader
+import pymarc
 
 from commons.configuration_loader import load_config
 from commons.downloaders.db_dump_downloader import get_raw_db
@@ -73,14 +73,10 @@ def is_selected(pymarc_rcd) -> int:
     #genre_general_subdivision = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['x']))
 
     try:
-        if publication_date >= 1918 \
-                and language_of_original != 'pol' and field_041h \
-                and 'pol' in language_of_publication \
+        if 'pol' in language_of_original and field_041h \
                 and ('Książki' in form_of_work or "E-booki" in form_of_work or ('Artykuły' in form_of_work and 'Nadbitki i odbitki' in genre_of_work)):
             return 1
-        if publication_date >= 1918 \
-                and language_of_original != 'pol' and (is_translation or field_041h) \
-                and 'pol' in language_of_publication \
+        if 'pol' in language_of_original and (is_translation or field_041h) \
                 and (('Książki' in form_of_work or "E-booki" in form_of_work or ('Artykuły' in form_of_work and 'Nadbitki i odbitki' in genre_of_work)) or not form_of_work):
             return 2
         else:
@@ -153,7 +149,7 @@ def extract_to_csv(pymarc_rcd, is_selected_value):
 
 def select_and_extract_records_to_csv(path_to_raw_db):
     with open(path_to_raw_db, 'rb') as fp:
-        rdr = MARCReader(fp, to_unicode=True, force_utf8=True, utf8_handling='ignore', permissive=True)
+        rdr = pymarc.MARCReader(fp, to_unicode=True, force_utf8=True, utf8_handling='ignore', permissive=True)
 
         counter = 0
         for rcd in rdr:
@@ -179,17 +175,40 @@ def dump_to_csv(records_buffer):
             csv_writer.writerow(record.as_sanitized_for_csv_dict().values())
 
 
+def is_record_unique(rcd: MARC2csvDataModel,
+                     records_deduplication_helper_set: set):
+    isbn = rcd.data.get('isbn')
+    publication_date = rcd.data.get('publication_date')
+
+    isbn_publication_date = None
+    if isbn and publication_date:
+        isbn_publication_date = ''.join(isbn) + str(publication_date)
+    if isbn and not publication_date:
+        isbn_publication_date = ''.join(isbn)
+
+    if not isbn_publication_date:
+        return True
+    else:
+        if isbn_publication_date in records_deduplication_helper_set:
+            return False
+        else:
+            records_deduplication_helper_set.add(isbn_publication_date)
+            return True
+
+
 def main(db_config):
     # get path to db (and download it, if needed)
     path_to_raw_db = get_raw_db(db_config.get('source_db_name'), db_config.get('skip_download'))
 
+    records_deduplication_helper_set = set()
     records_buffer = []
     for record in select_and_extract_records_to_csv(path_to_raw_db):
         if record:
-            records_buffer.append(record)
-            if len(records_buffer) == 500:
-                dump_to_csv(records_buffer)
-                records_buffer = []
+            if is_record_unique(record, records_deduplication_helper_set):
+                records_buffer.append(record)
+                if len(records_buffer) == 500:
+                    dump_to_csv(records_buffer)
+                    records_buffer = []
     if records_buffer:
         dump_to_csv(records_buffer)
 

@@ -1,2 +1,2 @@
 source_db_name: bibs-all.marc
-skip_download: false
+skip_download: true
