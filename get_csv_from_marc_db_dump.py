@@ -17,7 +17,7 @@ PROGRESS_UPDATE_STEP = 10000
 
 class MARC2csvDataModel(object):
     def __init__(self,
-                 mms_id, publication_date, publication_country, isbn, language_of_original,
+                 mms_id, publication_date, publication_country, isbn, language_of_publication, language_of_original,
                  language_of_intermediate_translation, udc, other_classification_number,
                  creator, title, title_of_original, edition, publication_place, extent, form_of_work,
                  audience_characteristics, contributor_characteristics, genre, cocreator, cocreator_only_translator,
@@ -27,6 +27,7 @@ class MARC2csvDataModel(object):
                      'publication_date': publication_date,
                      'publication_country': publication_country,
                      'isbn': isbn,
+                     'language_of_publication': language_of_publication,
                      'language_of_original': language_of_original,
                      'language_of_intermediate_translation': language_of_intermediate_translation,
                      'udc': udc,
@@ -63,22 +64,30 @@ class MARC2csvDataModel(object):
 
 
 def is_selected(pymarc_rcd) -> int:
-    publication_date = attr_extr.get_publication_dates(pymarc_rcd)
-    language_of_original = attr_extr.get_language_of_original(pymarc_rcd)
-    language_of_publication = ''.join(attr_extr.get_language_of_publication(pymarc_rcd))
-    field_041h = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('041', ['h']))
+    creator_100 = attr_extr.get_values_by_field(pymarc_rcd, '100')
+    if creator_100:
+        creator_100 = creator_100[0]
+        creator_100.rstrip('.')
+
+    publication_country = attr_extr.get_country_of_publication(pymarc_rcd)
     form_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('380', ['a']))
-    is_translation = attr_extr.is_translation(pymarc_rcd)
-    genre_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['a']))
+    #language_of_publication = ''.join(attr_extr.get_language_of_publication(pymarc_rcd))
+
+    #publication_date = attr_extr.get_publication_dates(pymarc_rcd)
+    #language_of_original = attr_extr.get_language_of_original(pymarc_rcd)
+    #language_of_publication = ''.join(attr_extr.get_language_of_publication(pymarc_rcd))
+    #field_041h = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('041', ['h']))
+
+    #is_translation = attr_extr.is_translation(pymarc_rcd)
+    #genre_of_work = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['a']))
     #genre_general_subdivision = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('655', ['x']))
 
     try:
-        if 'pol' in language_of_original and field_041h \
-                and ('Książki' in form_of_work or "E-booki" in form_of_work or ('Artykuły' in form_of_work and 'Nadbitki i odbitki' in genre_of_work)):
+        if 'Herbert, Zbigniew' in creator_100 \
+                and 'pl' not in publication_country \
+                and ('Książki' in form_of_work or not form_of_work):
+
             return 1
-        if 'pol' in language_of_original and (is_translation or field_041h) \
-                and (('Książki' in form_of_work or "E-booki" in form_of_work or ('Artykuły' in form_of_work and 'Nadbitki i odbitki' in genre_of_work)) or not form_of_work):
-            return 2
         else:
             return 0
     except Exception:
@@ -90,6 +99,7 @@ def extract_to_csv(pymarc_rcd, is_selected_value):
     publication_date = attr_extr.get_publication_dates(pymarc_rcd)
     publication_country = attr_extr.get_country_of_publication(pymarc_rcd)
     isbn = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('020', ['a']))
+    language_of_publication = attr_extr.get_language_of_publication(pymarc_rcd)
     language_of_original = attr_extr.get_language_of_original(pymarc_rcd)
     language_of_intermediate_translation = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('041', ['k']))
     udc = attr_extr.get_values_by_field_and_subfield(pymarc_rcd, ('080', ['a']))
@@ -124,6 +134,7 @@ def extract_to_csv(pymarc_rcd, is_selected_value):
                              publication_date=publication_date,
                              publication_country=publication_country,
                              isbn=isbn,
+                             language_of_publication=language_of_publication,
                              language_of_original=language_of_original,
                              language_of_intermediate_translation=language_of_intermediate_translation,
                              udc=udc,
@@ -158,7 +169,7 @@ def select_and_extract_records_to_csv(path_to_raw_db):
             counter += 1
 
             is_selected_value = is_selected(rcd)
-            if is_selected_value == 1 or is_selected_value == 2:
+            if is_selected_value == 1:
                 try:
                     exctracted_to_csv = extract_to_csv(rcd, is_selected_value)
                     yield exctracted_to_csv

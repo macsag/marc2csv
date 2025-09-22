@@ -78,6 +78,35 @@ def get_language_of_original(pymarc_rcd: Record) -> list:
 
 
 def get_language_of_publication(pymarc_rcd: Record) -> list:
+    language_of_publication = []
+
+    lang_008 = get_values_by_field(pymarc_rcd, '008')[0][35:38]
+    lang_041_a = get_values_by_field_and_subfield(pymarc_rcd, ('041', ['a']))
+
+    if lang_008 and not lang_041_a:
+        language_of_publication = [lang_008]
+    if lang_041_a:
+        if len(lang_041_a) == 1 and len(lang_041_a[0]) == 3:
+            language_of_publication = lang_041_a
+        if len(lang_041_a) == 1 and len(lang_041_a[0]) > 3:
+            lang_041_a = lang_041_a[0].strip()
+            lang_041_a = lang_041_a.replace('  ', ' ')
+            if ' ' in lang_041_a:
+                language_of_publication = lang_041_a.split(' ')
+            else:
+                if not len(lang_041_a) % 3:
+                    language_of_publication = [lang_041_a[i:i+3] for i in range(0, len(lang_041_a), 3)]
+
+                else:
+                    # some very strange case, probably invalid data
+                    language_of_publication = [lang_041_a]
+    else:
+        language_of_publication = lang_041_a
+
+    return language_of_publication
+
+
+def get_language_of_publication(pymarc_rcd: Record) -> list:
     language_of_publication = set()
     lang_from_008 = None
 
