@@ -217,7 +217,7 @@ def select_and_extract_records_to_csv(path_to_raw_db):
 
 
 def dump_to_csv(records_buffer):
-    with open('ncn_proza_2.csv', 'a', newline='', encoding='utf-8') as fp:
+    with open('2026_01_16_ncn_proza_1_2.csv', 'a', newline='', encoding='utf-8') as fp:
         csv_writer = csv.writer(fp, delimiter=',', quoting=csv.QUOTE_ALL)
         for record in records_buffer:
             csv_writer.writerow(record.as_sanitized_for_csv_dict().values())
