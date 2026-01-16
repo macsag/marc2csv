@@ -106,22 +106,6 @@ def get_language_of_publication(pymarc_rcd: Record) -> list:
     return language_of_publication
 
 
-def get_language_of_publication(pymarc_rcd: Record) -> list:
-    language_of_publication = set()
-    lang_from_008 = None
-
-    if get_values_by_field(pymarc_rcd, '008'):
-        lang_from_008 = get_values_by_field(pymarc_rcd, '008')[0][35:38]
-    lang_from_041_a = get_values_by_field_and_subfield(pymarc_rcd, ('041', ['a']))
-
-    if lang_from_008:
-        language_of_publication.add(lang_from_008)
-    if lang_from_041_a:
-        language_of_publication.update(lang_from_041_a)
-
-    return list(language_of_publication)
-
-
 def get_country_of_publication(pymarc_rcd: Record) -> list:
     country_of_publication = set()
     country_from_008 = None
@@ -192,10 +176,10 @@ def get_publication_dates(pymarc_rcd) -> Optional[int]:
         v_008_06 = get_values_by_field(pymarc_rcd, '008')[0][6]
     except IndexError:
         if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
-            atrributes_extractors_logger.error(f"Brak pola 008."
+            atrributes_extractors_logger.error(f"Błędne pole 008."
                                                f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}")
         else:
-            atrributes_extractors_logger.error(f"Brak pola 008."
+            atrributes_extractors_logger.error(f"Błędne pole 008."
                                                f"|| {pymarc_rcd.get_fields('001')[0].value()}")
         v_008_06 = None
 
@@ -213,10 +197,24 @@ def get_publication_dates(pymarc_rcd) -> Optional[int]:
                 pass
         else:
             try:
-                v_008_0710 = get_values_by_field(pymarc_rcd,
-                                                 '008')[0][7:11].replace('u', '0').replace(' ', '0').replace('X', '0')
-                v_008_1114 = get_values_by_field(pymarc_rcd,
-                                                 '008')[0][11:15].replace('u', '0').replace(' ', '0').replace('X', '0')
+                v_008_0710 = get_values_by_field(
+                    pymarc_rcd,
+                    '008')[0][7:11].replace(
+                    'u', '0'
+                ).replace(
+                    ' ', '0'
+                ).replace(
+                    'X', '0'
+                )
+                v_008_1114 = get_values_by_field(
+                    pymarc_rcd,
+                    '008')[0][11:15].replace(
+                    'u', '0'
+                ).replace(
+                    ' ', '0'
+                ).replace(
+                    'X', '0'
+                )
             except IndexError:
                 v_008_0710 = None
                 v_008_1114 = None
@@ -286,11 +284,15 @@ def get_audience_characteristics(pymarc_rcd) -> list:
                 audience_characteristics_final.append(audience_characteristics_raw_value)
             else:
                 if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
-                    atrributes_extractors_logger.error(f"Brak podpola |a w polu 385 mimo obecności podpola |m. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |a w polu 385 mimo obecności podpola |m. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}"
+                    )
                 else:
-                    atrributes_extractors_logger.error(f"Brak podpola |a w polu 385 mimo obecności podpola |m. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |a w polu 385 mimo obecności podpola |m. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}"
+                    )
 
     return audience_characteristics_final
 
@@ -307,11 +309,15 @@ def get_publisher_uniform_name(pymarc_rcd) -> list:
                 publisher_uniform_name_final.append(publisher_uniform_name_raw_value)
             else:
                 if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
-                    atrributes_extractors_logger.error(f"Brak podpola |a w polu 710 mimo obecności podpola |4. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |a w polu 710 mimo obecności podpola |4. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}"
+                    )
                 else:
-                    atrributes_extractors_logger.error(f"Brak podpola |a w polu 710 mimo obecności podpola |4. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |a w polu 710 mimo obecności podpola |4. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}"
+                    )
 
     if not publisher_uniform_name_final:
         publisher_name_from_260_b = get_values_by_field_and_subfield(pymarc_rcd, ('260', ['b']))
@@ -330,7 +336,7 @@ def get_publisher_uniform_name(pymarc_rcd) -> list:
     return publisher_uniform_name_final
 
 
-def get_creator(pymarc_rcd) -> list:
+def get_creator(pymarc_rcd) -> list[str]:
     creators_final = []
 
     creators_raw_fields = pymarc_rcd.get_fields('100')
@@ -345,21 +351,21 @@ def get_creator(pymarc_rcd) -> list:
                 creators_final.append(creator_final)
             else:
                 if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
-                    atrributes_extractors_logger.error(f"Brak podpola |abcdn w polu 100 mimo obecności podpola |e. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 100 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}"
+                    )
                 else:
-                    atrributes_extractors_logger.error(f"Brak podpola |abcdn w polu 100 mimo obecności podpola |e. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 100 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}"
+                    )
         else:
             if creator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n'):
                 creator_raw_value = creator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n')
                 creator_raw_value = ' '.join(creator_raw_value)
                 creators_final.append(creator_raw_value)
 
-    return creators_final
-
-
-def get_cocreator(pymarc_rcd) -> list:
     cocreators_final = []
 
     cocreators_raw_fields = pymarc_rcd.get_fields('700')
@@ -371,18 +377,64 @@ def get_cocreator(pymarc_rcd) -> list:
                 cocreator_raw_value = ' '.join(cocreator_raw_value)
                 cocreator_raw_value = cocreator_raw_value.strip().rstrip('.').strip()
                 cocreator_final = f'{cocreator_raw_value} [{cocreator_responsibilities}]'
-                cocreators_final.append(cocreator_final)
+                if is_author(cocreator_raw_field.get_subfields('e')):
+                    cocreators_final.append(cocreator_final)
             else:
                 if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
-                    atrributes_extractors_logger.error(f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}"
+                    )
                 else:
-                    atrributes_extractors_logger.error(f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
-                                                       f"|| {pymarc_rcd.get_fields('001')[0].value()}")
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}"
+                    )
         else:
             if cocreator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n'):
                 cocreator_raw_value = cocreator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n')
                 cocreator_raw_value = ' '.join(cocreator_raw_value)
                 cocreators_final.append(cocreator_raw_value)
 
-    return cocreators_final
+    creators_cocreators_final = creators_final + cocreators_final
+
+    return list(set(creators_cocreators_final))
+
+
+def is_author(creator_responsibilities: str) -> bool:
+    for resp in creator_responsibilities:
+        if resp == 'Autor' or resp == 'Aut.':
+            return True
+        else:
+            continue
+
+    return False
+
+
+def get_cocreator(pymarc_rcd) -> list[str]:
+    cocreators_final = []
+
+    cocreators_raw_fields = pymarc_rcd.get_fields('700')
+    for cocreator_raw_field in cocreators_raw_fields:
+        if cocreator_raw_field.get_subfields('e'):
+            cocreator_responsibilities = ', '.join(cocreator_raw_field.get_subfields('e'))
+            if cocreator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n'):
+                cocreator_raw_value = cocreator_raw_field.get_subfields('a', 'b', 'c', 'd', 'n')
+                cocreator_raw_value = ' '.join(cocreator_raw_value)
+                cocreator_raw_value = cocreator_raw_value.strip().rstrip('.').strip()
+                cocreator_final = f'{cocreator_raw_value} [{cocreator_responsibilities}]'
+                if not is_author(cocreator_raw_field.get_subfields('e')):
+                    cocreators_final.append(cocreator_final)
+            else:
+                if pymarc_rcd.get_fields('001') and pymarc_rcd.get_fields('009'):
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}, {pymarc_rcd.get_fields('009')[0].value()}"
+                    )
+                else:
+                    atrributes_extractors_logger.error(
+                        f"Brak podpola |abcdn w polu 700 mimo obecności podpola |e. "
+                        f"|| {pymarc_rcd.get_fields('001')[0].value()}"
+                    )
+
+    return list(set(cocreators_final))
